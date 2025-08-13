@@ -6,34 +6,37 @@ A Django-based B2B ordering platform for charcuterie wholesale distribution, des
 
 Fresh Concept specializes in slicing, packaging, and distributing charcuterie products to:
 
--   **GMS (Grandes et Moyennes Surfaces)** - Supermarkets and retail chains
--   **Food Service** - Restaurants, cafeterias, and catering companies
--   **Industrial** - Food manufacturers requiring processing services
+-   **GMS (Grandes et Moyennes Surfaces)** - Supermarkets and retail chains *(Primary focus of this solution)*
+-   **Food Service** - Restaurants, cafeterias, and catering companies *(Future expansion)*
+-   **Industrial** - Food manufacturers requiring processing services *(Future expansion)*
 
 ## Project Overview
 
-This web application addresses the unique needs of B2B charcuterie distribution with customer-specific catalogs, flexible ordering systems, and comprehensive support features.
+This web application addresses the unique needs of **GMS (Grandes et Moyennes Surfaces)** charcuterie distribution with customer-specific catalogs, flexible ordering systems, and comprehensive support features. The solution is designed specifically for supermarkets and retail chains, with future expansion possibilities to other customer types.
 
 ## Core Features
 
 ### Customer Management
 
--   Multi-tier customer access (GMS, Food Service, Industrial)
--   Custom delivery schedules and order deadlines
--   Automated account creation with email notifications
+-   **GMS-focused customer access** - Supermarkets and retail chains
+-   Custom delivery schedules with JSON-based configuration
+-   Order deadline validation and next delivery day calculation
+-   Employee/admin-driven customer account creation
 
 ### Product Catalog
 
--   Customer-specific product visibility
--   Multiple packaging formats per product
+-   Automatic wholesale and retail price calculations
+-   Margin rate management (default 30%)
+-   VAT integration (6% Belgian VAT)
 -   Minimum quantity enforcement
--   Saved items for frequent orders
+-   Standardized product weights and pricing per kilogram
 
 ### Order Processing
 
--   Order history and tracking
--   Delivery schedule integration
--   Staff dashboard for order management
+-   Order status management (pending, confirmed, cancelled)
+-   Automatic total amount calculation from order items
+-   Order item quantity and pricing management
+-   Staff dashboard for order management (admin interface ready)
 
 ### Support System
 
@@ -43,9 +46,10 @@ This web application addresses the unique needs of B2B charcuterie distribution 
 
 ### User Authentication
 
--   Secure login/logout system
--   Password reset functionality
--   Role-based access control
+-   Custom User model with role-based access (customer, employee, admin)
+-   Customer accounts managed by employees/admins
+-   Password reset functionality (framework ready)
+-   Role-based permission system
 
 ## Technical Implementation
 
@@ -58,18 +62,20 @@ This web application addresses the unique needs of B2B charcuterie distribution 
 
 ### Key Django Concepts Implemented
 
--   Custom User models and authentication
--   Complex model relationships (Foreign Keys, Many-to-Many)
--   Form handling and validation
--   Email automation
--   Permission-based views
--   Custom Django Admin interface
+-   **Custom User Model**: Extending AbstractUser with role-based authentication
+-   **Model Relationships**: OneToOneField (User-Customer), ForeignKey (Order-Customer, OrderItem-Order/Product)
+-   **Model Properties**: Computed fields for pricing calculations and business logic
+-   **JSONField**: Flexible delivery schedule storage
+-   **Model Validation**: Custom validators for VAT numbers and phone numbers
+-   **Admin Customization**: ModelAdmin with custom display methods and fieldsets
+-   **Testing**: Comprehensive test suite with proper test data isolation
 
 ### Architecture Decisions
 
+-   **GMS-focused solution** - Designed specifically for supermarket and retail chain needs
 -   Customer-specific delivery schedules (flexible over zone-based)
--   Product variants system (same product, different packaging)
--   Hierarchical customer access levels
+-   Standardized product catalog (consistent packaging and sizes)
+-   Role-based access control (customer, employee, admin)
 -   Integrated support ticket system
 
 ## Project Structure
@@ -78,11 +84,14 @@ This web application addresses the unique needs of B2B charcuterie distribution 
 freshconcept_ordering/
 ├── manage.py
 ├── freshconcept_ordering/
-│   ├── settings.py
+│   ├── settings.py          # Django settings with custom AUTH_USER_MODEL
 │   ├── urls.py
 │   └── wsgi.py
 └── orders/
-    ├── models.py
+    ├── models.py            # User, Customer, Product, Order, OrderItem models
+    ├── admin.py             # Customized admin interface
+    ├── tests.py             # Comprehensive test suite
+    ├── migrations/          # Database migrations
     ├── views.py
     ├── urls.py
     └── templates/
@@ -95,6 +104,7 @@ freshconcept_ordering/
 -   Python 3.8+
 -   pip
 -   Virtual environment
+-   Git (for cloning the repository)
 
 ### Installation
 
@@ -136,21 +146,30 @@ python manage.py createsuperuser
 python manage.py runserver
 ```
 
+7. Run tests to verify everything works
+
+```bash
+python manage.py test
+```
+
 ## Development Roadmap
 
 ### Phase 1: Core Foundation ✅
 
 -   [x] Project setup and configuration
--   [ ] Customer model with business logic
--   [ ] Product catalog with variants
--   [ ] Basic authentication system
+-   [x] Custom User model with role-based authentication (customer, employee, admin)
+-   [x] Customer model with business logic and delivery schedules
+-   [x] Product catalog with pricing calculations and variants
+-   [x] Order and OrderItem models with relationships
+-   [x] Django Admin customization for all models
+-   [x] Comprehensive test suite for all models
 
 ### Phase 2: Ordering System
 
--   [ ] Order model and relationships
+-   [x] Order model and relationships (Order, OrderItem with automatic pricing)
 -   [ ] Shopping cart functionality
 -   [ ] Order history and tracking
--   [ ] Delivery schedule integration
+-   [ ] Delivery schedule integration (models ready, UI pending)
 
 ### Phase 3: Support Features
 
@@ -170,12 +189,12 @@ python manage.py runserver
 
 This project serves as a comprehensive Django learning experience covering:
 
--   **Model Design**: Complex business relationships and data validation
--   **User Management**: Custom authentication and permission systems
--   **Form Processing**: Dynamic forms with business rule validation
--   **Admin Customization**: Tailored staff interfaces
--   **Email Integration**: Automated business communications
--   **Security**: Role-based access and data protection
+-   **Model Design**: Complex business relationships, custom validators, and computed properties
+-   **User Management**: Custom User model extending AbstractUser with role-based authentication
+-   **Database Design**: OneToOneField, ForeignKey relationships, and unique constraints
+-   **Admin Customization**: ModelAdmin with custom display methods, fieldsets, and search
+-   **Testing**: Comprehensive test suite with proper test data isolation and constraint testing
+-   **Business Logic**: Pricing calculations, delivery schedules, and order management
 
 ## Contributing
 
