@@ -180,7 +180,6 @@ class CustomerModelTest(TestCase):
         # Note: This method requires datetime mocking for full testing
         # For now, just test that the method exists and doesn't crash
         self.assertTrue(hasattr(customer, 'can_order_for_delivery'))
-        self.assertTrue(hasattr(customer, 'get_next_delivery_day'))
     
     def test_delivery_schedule_basic_functionality(self):
         """Test basic delivery schedule functionality with new structure."""
@@ -212,7 +211,6 @@ class CustomerModelTest(TestCase):
         
         # Test that methods exist and don't crash
         self.assertTrue(hasattr(customer, 'can_order_for_delivery'))
-        self.assertTrue(hasattr(customer, 'get_next_delivery_day'))
     
     def test_delivery_schedule_validation(self):
         """Test delivery schedule field validation with new JSON structure."""

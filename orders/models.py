@@ -16,6 +16,7 @@ from django.db import models
 from django.core.validators import RegexValidator
 from decimal import Decimal
 from django.contrib.auth.models import AbstractUser
+from datetime import datetime, timedelta
 
 class User(AbstractUser):
     """
@@ -111,28 +112,26 @@ class Customer(models.Model):
         day_names = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
         return [day_names[int(day)] for day in self.delivery_schedule.keys()]
     
-    def get_next_delivery_day(self):
-        """Get the next available delivery day."""
-        from datetime import datetime
-        
+    def get_next_delivery_day_info(self):
+        """
+        Returns a tuple: (day_index, day_name, date)
+        """
+        from datetime import datetime, timedelta
+        day_names = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
         today = datetime.now().weekday()
-        
-        # Get all delivery days from the schedule
         delivery_days = [int(day) for day in self.delivery_schedule.keys()]
-        
         if not delivery_days:
-            return None
-        
-        # Sort delivery days
+            return None, None, None
         delivery_days.sort()
-        
-        # Find next delivery day this week
         for day in delivery_days:
             if day > today:
-                return day
-        
-        # If no days this week, return first day of next week
-        return delivery_days[0] if delivery_days else None
+                days_until = day - today
+                next_date = datetime.now() + timedelta(days=days_until)
+                return day, day_names[day], next_date
+        # If no days left this week, return the first delivery day next week
+        days_until = (7 - today) + delivery_days[0]
+        next_date = datetime.now() + timedelta(days=days_until)
+        return delivery_days[0], day_names[delivery_days[0]], next_date
 
     def can_order_for_delivery(self, delivery_day):
         """Check if customer can still order for a specific delivery day."""
@@ -220,6 +219,13 @@ class Product(models.Model):
         weight = f"{self.approximate_weight}kg" if self.approximate_weight else "No weight set"
         return f"{self.name} - {weight}"
 
+    def quantities_for_orders(self, order_ids):
+        # Get all order items for these orders
+        items = self.order_items.filter(order_id__in=order_ids)
+        # Map order_id to quantity
+        qty_map = {item.order_id: item.quantity for item in items}
+        # Return quantities in the same order as order_ids
+        return [qty_map.get(order_id, 0) for order_id in order_ids]
 
 class Order(models.Model):
     """
@@ -234,6 +240,7 @@ class Order(models.Model):
     
     customer = models.ForeignKey(Customer, on_delete=models.CASCADE, related_name='orders')
     order_date = models.DateTimeField(auto_now_add=True)
+    delivery_date = models.DateField()
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
     notes = models.TextField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)

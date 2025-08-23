@@ -109,10 +109,10 @@ class OrderItemInline(admin.TabularInline):
 
 @admin.register(Order)
 class OrderAdmin(admin.ModelAdmin):
-    list_display = ['id', 'customer', 'order_date', 'status', 'get_total_amount', 'get_total_items']
-    list_filter = ['status', 'order_date', 'created_at']
+    list_display = ['id', 'customer', 'order_date', 'delivery_date', 'status', 'get_total_amount', 'get_total_items']
+    list_filter = ['status', 'order_date', 'delivery_date', 'created_at']
     search_fields = ['customer__company_name', 'customer__customer_number']
-    readonly_fields = ['order_date', 'created_at', 'updated_at']
+    readonly_fields = ['order_date', 'delivery_date', 'created_at', 'updated_at']
     inlines = [OrderItemInline]
     ordering = ['-order_date']
     

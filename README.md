@@ -159,7 +159,7 @@ python manage.py test
 -   [x] Project setup and configuration
 -   [x] Custom User model with role-based authentication (customer, employee, admin)
 -   [x] Customer model with business logic and delivery schedules
--   [x] Product catalog with pricing calculations and variants
+-   [x] Product catalog with pricing calculations
 -   [x] Order and OrderItem models with relationships
 -   [x] Django Admin customization for all models
 -   [x] Comprehensive test suite for all models

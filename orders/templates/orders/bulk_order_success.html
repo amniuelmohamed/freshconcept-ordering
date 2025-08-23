@@ -1,0 +1,11 @@
+{% extends 'orders/base.html' %}
+{% block content %}
+  <h2>Order Placed Successfully!</h2>
+  <p>Thank you for your order. Your bulk order has been submitted and will be processed shortly.</p>
+  <p>Order Number: {{ order.id }}</p>
+  <p>Order Date: {{ order.order_date|date:"d/m/Y" }}</p>
+  <p>Estimated Delivery Date: {{ order.delivery_date|date:"d/m/Y" }}</p>
+  <p>Order Status: {{ order.status }}</p>
+  <p>Order Total: €{{ order.total_amount|floatformat:2 }}</p>
+  <a href="{% url 'bulk_order_form' %}">Place another order</a>
+{% endblock %}
