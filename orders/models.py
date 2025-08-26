@@ -157,6 +157,16 @@ class Customer(models.Model):
         else:
             return True
 
+    def get_existing_order_for_delivery_date(self, delivery_date):
+        """
+        Get existing order for a specific delivery date.
+        Returns the order if it exists, None otherwise.
+        """
+        try:
+            return self.orders.filter(delivery_date=delivery_date).first()
+        except:
+            return None
+
 
 class Product(models.Model):
     """

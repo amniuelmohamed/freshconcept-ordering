@@ -20,6 +20,12 @@ class RoleBasedLoginView(LoginView):
                 return reverse('admin:index')
         return super().get_success_url()
 
+    def dispatch(self, request, *args, **kwargs):
+        # If user is already authenticated, redirect them to appropriate page
+        if request.user.is_authenticated:
+            return redirect(self.get_success_url())
+        return super().dispatch(request, *args, **kwargs)
+
 @login_required
 def bulk_order_form(request):
     try:
@@ -37,6 +43,11 @@ def bulk_order_form(request):
         product.margin_percentage = int(float(product.margin_rate) * 100)
 
     _, next_delivery_day_name, next_delivery_date = customer.get_next_delivery_day_info()
+
+    # Check if there's an existing order for the next delivery date
+    existing_order = None
+    if next_delivery_date:
+        existing_order = customer.get_existing_order_for_delivery_date(next_delivery_date.date())
 
     errors = {}
     quantities = {}
@@ -70,12 +81,35 @@ def bulk_order_form(request):
         errors = {}
         quantities = {}
 
-        # No errors: create order and order items
-        order = Order.objects.create(
-            customer=customer,
-            order_date=datetime.now(),
-            delivery_date=next_delivery_date.date() if next_delivery_date else None,
-        )
+        # Check if we're updating an existing order or creating a new one
+        if existing_order:
+            # Update existing order
+            order = existing_order
+            # Clear existing order items
+            order.order_items.all().delete()
+            order.save()
+        else:
+            # Create new order
+            if not next_delivery_date:
+                # If no delivery date available, redirect back with error
+                context = {
+                    'customer': customer,
+                    'all_active_products': all_active_products,
+                    'order_dates': order_dates,
+                    'errors': {'general': 'No delivery date available. Please contact support.'},
+                    'quantities': quantities,
+                    'next_delivery_day_name': next_delivery_day_name,
+                    'next_delivery_date': next_delivery_date,
+                }
+                return render(request, 'orders/bulk_order_form.html', context)
+            
+            order = Order.objects.create(
+                customer=customer,
+                order_date=datetime.now(),
+                delivery_date=next_delivery_date.date(),
+            )
+
+        # Create or update order items
         for product in all_active_products:
             key = f'quantity_{product.id}'
             value = request.POST.get(key)
@@ -93,15 +127,27 @@ def bulk_order_form(request):
         # Redirect to success page to prevent form re-rendering with old data
         return redirect('bulk_order_success', order_id=order.id)
 
-    # GET request
+    # GET request - pre-fill form with existing order data if available
+    if existing_order:
+        # Pre-fill quantities from existing order
+        for product in all_active_products:
+            try:
+                order_item = existing_order.order_items.get(product=product)
+                quantities[product.id] = order_item.quantity
+            except OrderItem.DoesNotExist:
+                quantities[product.id] = 0
+    else:
+        quantities = {}  # Empty quantities for new order
+
     context = {
         'customer': customer,
         'all_active_products': all_active_products,
         'order_dates': order_dates,
         'errors': {},  # Always start with empty errors on GET
-        'quantities': {},  # Always start with empty quantities on GET
+        'quantities': quantities,  # Pre-filled or empty quantities
         'next_delivery_day_name': next_delivery_day_name,
         'next_delivery_date': next_delivery_date,
+        'existing_order': existing_order,  # Pass to template for UI feedback
     }
     return render(request, 'orders/bulk_order_form.html', context)
 

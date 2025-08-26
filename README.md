@@ -68,7 +68,10 @@ This web application addresses the unique needs of **GMS (Grandes et Moyennes Su
 -   **JSONField**: Flexible delivery schedule storage
 -   **Model Validation**: Custom validators for VAT numbers and phone numbers
 -   **Admin Customization**: ModelAdmin with custom display methods and fieldsets
--   **Testing**: Comprehensive test suite with proper test data isolation
+-   **Template System**: Template inheritance, custom filters, and Bootstrap integration
+-   **View Logic**: Function-based views with authentication, form handling, and business logic
+-   **URL Routing**: Named URLs, reverse lookups, and role-based redirects
+-   **Testing**: Comprehensive test suite for models, views, and business logic
 
 ### Architecture Decisions
 
@@ -164,12 +167,22 @@ python manage.py test
 -   [x] Django Admin customization for all models
 -   [x] Comprehensive test suite for all models
 
-### Phase 2: Ordering System
+### Phase 2: Ordering System ✅
 
 -   [x] Order model and relationships (Order, OrderItem with automatic pricing)
--   [ ] Shopping cart functionality
--   [ ] Order history and tracking
--   [ ] Delivery schedule integration (models ready, UI pending)
+-   [x] Bulk order form with product catalog display
+-   [x] Order modification vs. new order creation logic
+-   [x] Delivery schedule integration with next delivery day calculation
+-   [x] Order history display (last 3 orders with quantities)
+-   [x] Order success page with order summary
+-   [x] Role-based authentication and access control
+-   [x] Comprehensive test suite for models and views
+
+**Next Steps for Phase 2:**
+- [ ] Employee dashboard for managing products, customers, and orders
+- [ ] Order status management (confirm/cancel orders)
+- [ ] Customer order history and tracking
+- [ ] Delivery schedule management interface
 
 ### Phase 3: Support Features
 
@@ -193,8 +206,11 @@ This project serves as a comprehensive Django learning experience covering:
 -   **User Management**: Custom User model extending AbstractUser with role-based authentication
 -   **Database Design**: OneToOneField, ForeignKey relationships, and unique constraints
 -   **Admin Customization**: ModelAdmin with custom display methods, fieldsets, and search
--   **Testing**: Comprehensive test suite with proper test data isolation and constraint testing
--   **Business Logic**: Pricing calculations, delivery schedules, and order management
+-   **Template System**: Template inheritance, custom filters, and modern UI with Bootstrap
+-   **View Logic**: Function-based views with authentication, form handling, and business logic
+-   **URL Routing**: Named URLs, reverse lookups, and role-based redirects
+-   **Testing**: Comprehensive test suite for models, views, and business logic
+-   **Business Logic**: Pricing calculations, delivery schedules, order management, and GMS workflows
 
 ## Contributing
 

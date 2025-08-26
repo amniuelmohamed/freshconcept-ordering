@@ -1,6 +1,8 @@
-from django.test import TestCase
+from django.test import TestCase, Client
 from django.core.exceptions import ValidationError
+from django.urls import reverse
 from decimal import Decimal
+from datetime import date
 from .models import User, Customer, Product, Order, OrderItem
 
 
@@ -260,11 +262,46 @@ class CustomerModelTest(TestCase):
         # Should handle empty delivery schedule gracefully
         self.assertEqual(customer.delivery_schedule, {})
         
-        # get_next_delivery_day should return None
-        self.assertIsNone(customer.get_next_delivery_day())
+        # get_next_delivery_day_info should return None values
+        day_index, day_name, next_date = customer.get_next_delivery_day_info()
+        self.assertIsNone(day_index)
+        self.assertIsNone(day_name)
+        self.assertIsNone(next_date)
         
         # get_delivery_days_display should return empty list
         self.assertEqual(customer.get_delivery_days_display(), [])
+
+    def test_get_existing_order_for_delivery_date(self):
+        """Test getting existing order for a specific delivery date."""
+        # Create customer with delivery schedule
+        customer_data = self.valid_customer_data.copy()
+        customer_data['delivery_schedule'] = {
+            '1': ['0', '08:00'],  # Tuesday delivery, order by Monday 8 AM
+            '4': ['3', '08:00']   # Friday delivery, order by Thursday 8 AM
+        }
+        
+        customer = Customer.objects.create(**customer_data)
+        
+        # Test with no existing order
+        delivery_date = date(2024, 1, 2)  # Tuesday
+        existing_order = customer.get_existing_order_for_delivery_date(delivery_date)
+        self.assertIsNone(existing_order)
+        
+        # Create an order for this delivery date
+        order = Order.objects.create(
+            customer=customer,
+            delivery_date=delivery_date,
+            status='pending'
+        )
+        
+        # Test with existing order
+        existing_order = customer.get_existing_order_for_delivery_date(delivery_date)
+        self.assertEqual(existing_order, order)
+        
+        # Test with different delivery date
+        different_date = date(2024, 1, 5)  # Friday
+        existing_order = customer.get_existing_order_for_delivery_date(different_date)
+        self.assertIsNone(existing_order)
 
 
 class ProductModelTest(TestCase):
@@ -348,6 +385,80 @@ class ProductModelTest(TestCase):
         product = Product.objects.create(**product_data)
         self.assertTrue(product.is_active)
 
+    def test_quantities_for_orders(self):
+        """Test quantities_for_orders method."""
+        # Create User and Customer first
+        user = User.objects.create_user(
+            username='quantitiesuser',
+            email='quantities@testsupermarket.be',
+            password='testpass123',
+            role='customer'
+        )
+        
+        customer = Customer.objects.create(
+            user=user,
+            customer_number='CUST005',
+            company_name='Test Supermarket',
+            address='123 Test Street, Brussels',
+            vat_number='0123456794',
+            contact_person='John Doe',
+            phone_number='+32 2 123 45 71'
+        )
+        
+        # Create the product
+        product = Product.objects.create(**self.valid_product_data)
+        
+        # Create some orders
+        order1 = Order.objects.create(
+            customer=customer,
+            delivery_date='2024-01-02',
+            status='pending'
+        )
+        
+        order2 = Order.objects.create(
+            customer=customer,
+            delivery_date='2024-01-05',
+            status='confirmed'
+        )
+        
+        order3 = Order.objects.create(
+            customer=customer,
+            delivery_date='2024-01-09',
+            status='pending'
+        )
+        
+        # Create order items with different quantities
+        OrderItem.objects.create(
+            order=order1,
+            product=product,
+            quantity=5
+        )
+        
+        OrderItem.objects.create(
+            order=order2,
+            product=product,
+            quantity=10
+        )
+        
+        # Note: order3 has no items for this product
+        
+        # Test quantities_for_orders method
+        order_ids = [order1.id, order2.id, order3.id]
+        quantities = product.quantities_for_orders(order_ids)
+        
+        # Should return quantities in the same order as order_ids
+        self.assertEqual(quantities, [5, 10, 0])
+        
+        # Test with different order of order_ids
+        order_ids_reversed = [order3.id, order2.id, order1.id]
+        quantities_reversed = product.quantities_for_orders(order_ids_reversed)
+        self.assertEqual(quantities_reversed, [0, 10, 5])
+        
+        # Test with non-existent order IDs
+        non_existent_ids = [999, 998, 997]
+        quantities_non_existent = product.quantities_for_orders(non_existent_ids)
+        self.assertEqual(quantities_non_existent, [0, 0, 0])
+
 
 class OrderModelTest(TestCase):
     """Test cases for the Order model."""
@@ -374,6 +485,7 @@ class OrderModelTest(TestCase):
         
         self.valid_order_data = {
             'customer': self.customer,
+            'delivery_date': date(2024, 1, 15),
             'status': 'pending',
             'notes': 'Delivery before 2 PM'
         }
@@ -520,6 +632,7 @@ class OrderItemModelTest(TestCase):
         
         self.order = Order.objects.create(
             customer=self.customer,
+            delivery_date=date(2024, 1, 15),
             status='pending'
         )
         
@@ -584,7 +697,10 @@ class OrderItemModelTest(TestCase):
         order_item_data = self.valid_order_item_data.copy()
         order_item_data['quantity'] = 1
         # Create a new order to avoid unique constraint violation
-        new_order = Order.objects.create(customer=self.customer)
+        new_order = Order.objects.create(
+            customer=self.customer,
+            delivery_date=date(2024, 1, 16)
+        )
         order_item_data['order'] = new_order
         order_item = OrderItem.objects.create(**order_item_data)
         self.assertEqual(order_item.quantity, 1)
@@ -595,7 +711,10 @@ class OrderItemModelTest(TestCase):
         # Test zero quantity (should be allowed by model, but might be validated in forms)
         order_item_data['quantity'] = 0
         # Create another new order
-        another_order = Order.objects.create(customer=self.customer)
+        another_order = Order.objects.create(
+            customer=self.customer,
+            delivery_date=date(2024, 1, 17)
+        )
         order_item_data['order'] = another_order
         order_item = OrderItem.objects.create(**order_item_data)
         self.assertEqual(order_item.quantity, 0)
@@ -638,11 +757,13 @@ class ModelRelationshipsTest(TestCase):
         """Test customer to orders relationship."""
         self.order1 = Order.objects.create(
             customer=self.customer,
+            delivery_date=date(2024, 1, 15),
             status='pending'
         )
         
         self.order2 = Order.objects.create(
             customer=self.customer,
+            delivery_date=date(2024, 1, 16),
             status='confirmed'
         )
         
@@ -654,6 +775,7 @@ class ModelRelationshipsTest(TestCase):
         """Test order to order items relationship."""
         order = Order.objects.create(
             customer=self.customer,
+            delivery_date=date(2024, 1, 17),
             status='pending'
         )
         
@@ -692,6 +814,7 @@ class ModelRelationshipsTest(TestCase):
         """Test product to order items relationship."""
         order = Order.objects.create(
             customer=self.customer,
+            delivery_date=date(2024, 1, 18),
             status='pending'
         )
         
@@ -709,6 +832,7 @@ class ModelRelationshipsTest(TestCase):
         """Test cascade deletion behavior."""
         order = Order.objects.create(
             customer=self.customer,
+            delivery_date=date(2024, 1, 19),
             status='pending'
         )
         
@@ -729,3 +853,251 @@ class ModelRelationshipsTest(TestCase):
         # Product and Customer should still exist
         self.assertEqual(Product.objects.count(), 1)
         self.assertEqual(Customer.objects.count(), 1)
+
+
+class ViewTest(TestCase):
+    """Test cases for views."""
+    
+    def setUp(self):
+        """Set up test data for view tests."""
+        # Create User and Customer
+        self.user = User.objects.create_user(
+            username='viewuser',
+            email='view@testsupermarket.be',
+            password='testpass123',
+            role='customer'
+        )
+        
+        self.customer = Customer.objects.create(
+            user=self.user,
+            customer_number='CUST006',
+            company_name='Test Supermarket',
+            address='123 Test Street, Brussels',
+            vat_number='0123456795',
+            contact_person='John Doe',
+            phone_number='+32 2 123 45 72',
+            delivery_schedule={
+                '0': ['6', '08:00'],  # Monday delivery, order by Sunday 8 AM
+                '1': ['0', '08:00'],  # Tuesday delivery, order by Monday 8 AM
+                '2': ['1', '08:00'],  # Wednesday delivery, order by Tuesday 8 AM
+                '3': ['2', '08:00'],  # Thursday delivery, order by Wednesday 8 AM
+                '4': ['3', '08:00'],  # Friday delivery, order by Thursday 8 AM
+                '5': ['4', '08:00'],  # Saturday delivery, order by Friday 8 AM
+                '6': ['5', '08:00']   # Sunday delivery, order by Saturday 8 AM
+            }
+        )
+        
+        # Create some products
+        self.product1 = Product.objects.create(
+            name='Test Product 1',
+            description='Test Description 1',
+            price_per_kg=Decimal('10.00'),
+            approximate_weight=Decimal('0.100'),
+            minimum_quantity=5
+        )
+        
+        self.product2 = Product.objects.create(
+            name='Test Product 2',
+            description='Test Description 2',
+            price_per_kg=Decimal('20.00'),
+            approximate_weight=Decimal('0.200'),
+            minimum_quantity=3
+        )
+    
+    def test_bulk_order_form_get(self):
+        """Test bulk order form GET request."""
+        client = Client()
+        
+        # Login the user
+        client.force_login(self.user)
+        
+        # Make GET request to bulk order form
+        response = client.get(reverse('bulk_order_form'))
+        
+        # Check response
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, 'orders/bulk_order_form.html')
+        
+        # Check context
+        context = response.context
+        self.assertIn('customer', context)
+        self.assertIn('all_active_products', context)
+        self.assertIn('quantities', context)
+        self.assertIn('next_delivery_day_name', context)
+        self.assertIn('next_delivery_date', context)
+        self.assertIn('existing_order', context)
+        
+        # Check that products are in context
+        self.assertEqual(len(context['all_active_products']), 2)
+        
+        # Check that quantities are empty for new order
+        self.assertEqual(context['quantities'], {})
+    
+    def test_bulk_order_form_post_new_order(self):
+        """Test bulk order form POST request for new order."""
+        client = Client()
+        client.force_login(self.user)
+        
+        # Get next delivery date
+        _, _, next_delivery_date = self.customer.get_next_delivery_day_info()
+        
+        # Make POST request with valid quantities
+        post_data = {
+            f'quantity_{self.product1.id}': '10',
+            f'quantity_{self.product2.id}': '5',
+        }
+        
+        response = client.post(reverse('bulk_order_form'), post_data)
+        
+        # Should redirect to success page
+        self.assertEqual(response.status_code, 302)
+        self.assertTrue(response.url.startswith('/orders/bulk/success/'))
+        
+        # Check that order was created
+        order = Order.objects.filter(customer=self.customer).first()
+        self.assertIsNotNone(order)
+        self.assertEqual(order.delivery_date, next_delivery_date.date())
+        
+        # Check that order items were created
+        order_items = order.order_items.all()
+        self.assertEqual(len(order_items), 2)
+        
+        # Check quantities
+        product1_item = order_items.filter(product=self.product1).first()
+        product2_item = order_items.filter(product=self.product2).first()
+        self.assertEqual(product1_item.quantity, 10)
+        self.assertEqual(product2_item.quantity, 5)
+    
+    def test_bulk_order_form_post_update_existing_order(self):
+        """Test bulk order form POST request for updating existing order."""
+        client = Client()
+        client.force_login(self.user)
+        
+        # Get next delivery date
+        _, _, next_delivery_date = self.customer.get_next_delivery_day_info()
+        
+        # Create an existing order for the next delivery date
+        existing_order = Order.objects.create(
+            customer=self.customer,
+            delivery_date=next_delivery_date.date(),
+            status='pending'
+        )
+        
+        # Add some items to the existing order
+        OrderItem.objects.create(
+            order=existing_order,
+            product=self.product1,
+            quantity=5
+        )
+        
+        # Make POST request to update the order
+        post_data = {
+            f'quantity_{self.product1.id}': '15',  # Updated quantity
+            f'quantity_{self.product2.id}': '8',   # New item
+        }
+        
+        response = client.post(reverse('bulk_order_form'), post_data)
+        
+        # Should redirect to success page
+        self.assertEqual(response.status_code, 302)
+        self.assertTrue(response.url.startswith('/orders/bulk/success/'))
+        
+        # Check that the same order was updated (not a new one created)
+        orders = Order.objects.filter(customer=self.customer)
+        self.assertEqual(orders.count(), 1)
+        
+        # Check that order items were updated
+        order_items = existing_order.order_items.all()
+        self.assertEqual(len(order_items), 2)
+        
+        # Check updated quantities
+        product1_item = order_items.filter(product=self.product1).first()
+        product2_item = order_items.filter(product=self.product2).first()
+        self.assertEqual(product1_item.quantity, 15)
+        self.assertEqual(product2_item.quantity, 8)
+    
+    def test_bulk_order_form_validation_error(self):
+        """Test bulk order form POST with validation errors."""
+        client = Client()
+        client.force_login(self.user)
+        
+        # Make POST request with quantity below minimum
+        post_data = {
+            f'quantity_{self.product1.id}': '2',  # Below minimum of 5
+            f'quantity_{self.product2.id}': '5',
+        }
+        
+        response = client.post(reverse('bulk_order_form'), post_data)
+        
+        # Should return form with errors (not redirect)
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, 'orders/bulk_order_form.html')
+        
+        # Check that errors are in context
+        context = response.context
+        self.assertIn('errors', context)
+        self.assertIn(self.product1.id, context['errors'])
+        
+        # Check that no order was created
+        self.assertEqual(Order.objects.count(), 0)
+    
+    def test_bulk_order_success_view(self):
+        """Test bulk order success view."""
+        client = Client()
+        client.force_login(self.user)
+        
+        # Create an order
+        order = Order.objects.create(
+            customer=self.customer,
+            delivery_date='2024-01-02',
+            status='pending'
+        )
+        
+        # Make GET request to success page
+        response = client.get(reverse('bulk_order_success', kwargs={'order_id': order.id}))
+        
+        # Check response
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, 'orders/bulk_order_success.html')
+        
+        # Check context
+        context = response.context
+        self.assertIn('order', context)
+        self.assertEqual(context['order'], order)
+    
+    def test_bulk_order_success_unauthorized_access(self):
+        """Test bulk order success view with unauthorized access."""
+        client = Client()
+        client.force_login(self.user)
+        
+        # Create another user and customer
+        other_user = User.objects.create_user(
+            username='otheruser',
+            email='other@testsupermarket.be',
+            password='testpass123',
+            role='customer'
+        )
+        
+        other_customer = Customer.objects.create(
+            user=other_user,
+            customer_number='CUST007',
+            company_name='Other Supermarket',
+            address='456 Other Street, Brussels',
+            vat_number='0123456796',
+            contact_person='Jane Doe',
+            phone_number='+32 2 123 45 73'
+        )
+        
+        # Create an order for the other customer
+        other_order = Order.objects.create(
+            customer=other_customer,
+            delivery_date='2024-01-02',
+            status='pending'
+        )
+        
+        # Try to access the other customer's order
+        response = client.get(reverse('bulk_order_success', kwargs={'order_id': other_order.id}))
+        
+        # Should redirect to bulk order form (unauthorized)
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.url, reverse('bulk_order_form'))

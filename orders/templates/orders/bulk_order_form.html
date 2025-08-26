@@ -25,6 +25,24 @@
             </div>
         </div>
 
+        <!-- Existing Order Notification -->
+        {% if existing_order %}
+        <div class="alert alert-info alert-dismissible fade show mb-4" role="alert">
+            <div class="d-flex align-items-center">
+                <i class="bi bi-info-circle-fill me-2 fs-4"></i>
+                <div>
+                    <strong>Editing Existing Order #{{ existing_order.id }}</strong>
+                    <br>
+                    <small class="text-muted">
+                        You have an existing order for {{ next_delivery_day_name }} {{ next_delivery_date|date:"d/m/Y" }}. 
+                        Modify the quantities below and submit to update your order.
+                    </small>
+                </div>
+            </div>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+        {% endif %}
+
         <!-- Order Form -->
         <form method="post" id="bulkOrderForm">
             {% csrf_token %}
@@ -165,7 +183,11 @@
                         <div class="col-md-4 text-md-end">
                             <button type="submit" class="btn btn-primary btn-lg">
                                 <i class="bi bi-check-circle me-2"></i>
-                                Place Order
+                                {% if existing_order %}
+                                    Update Order
+                                {% else %}
+                                    Place Order
+                                {% endif %}
                             </button>
                         </div>
                     </div>

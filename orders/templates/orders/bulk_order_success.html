@@ -1,11 +1,160 @@
 {% extends 'orders/base.html' %}
+
 {% block content %}
-  <h2>Order Placed Successfully!</h2>
-  <p>Thank you for your order. Your bulk order has been submitted and will be processed shortly.</p>
-  <p>Order Number: {{ order.id }}</p>
-  <p>Order Date: {{ order.order_date|date:"d/m/Y" }}</p>
-  <p>Estimated Delivery Date: {{ order.delivery_date|date:"d/m/Y" }}</p>
-  <p>Order Status: {{ order.status }}</p>
-  <p>Order Total: €{{ order.total_amount|floatformat:2 }}</p>
-  <a href="{% url 'bulk_order_form' %}">Place another order</a>
+<div class="row justify-content-center">
+    <div class="col-md-8 col-lg-6">
+        <!-- Success Header -->
+        <div class="text-center mb-4">
+            <div class="d-inline-flex align-items-center justify-content-center bg-success bg-opacity-10 rounded-circle mb-3" style="width: 80px; height: 80px;">
+                <i class="bi bi-check-circle-fill text-success" style="font-size: 2.5rem;"></i>
+            </div>
+            <h2 class="text-success mb-2">
+                {% if order.order_date|date:"Y-m-d H:i" == order.updated_at|date:"Y-m-d H:i" %}
+                    Order Placed Successfully!
+                {% else %}
+                    Order Updated Successfully!
+                {% endif %}
+            </h2>
+            <p class="text-muted">
+                {% if order.order_date|date:"Y-m-d H:i" == order.updated_at|date:"Y-m-d H:i" %}
+                    Your bulk order has been submitted and will be processed shortly.
+                {% else %}
+                    Your existing order has been updated and will be processed shortly.
+                {% endif %}
+            </p>
+        </div>
+
+        <!-- Order Details Card -->
+        <div class="card shadow-lg border-success">
+            <div class="card-header bg-success text-white">
+                <h5 class="mb-0"><i class="bi bi-receipt me-2"></i>Order Details</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label class="form-label text-muted small">Order Number</label>
+                            <div class="fw-bold fs-5">#{{ order.id }}</div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label text-muted small">Order Date</label>
+                            <div class="fw-bold">{{ order.order_date|date:"d/m/Y" }}</div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label text-muted small">Order Status</label>
+                            <div>
+                                <span class="badge bg-warning text-dark">{{ order.get_status_display }}</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label class="form-label text-muted small">Estimated Delivery</label>
+                            <div class="fw-bold">{{ order.delivery_date|date:"d/m/Y" }}</div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label text-muted small">Total Items</label>
+                            <div class="fw-bold">{{ order.get_total_items }} items</div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label text-muted small">Total Amount</label>
+                            <div class="fw-bold fs-4 text-success">€{{ order.total_amount|floatformat:2 }}</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Order Items Summary -->
+        {% if order.order_items.all %}
+        <div class="card shadow-sm mt-4">
+            <div class="card-header bg-light">
+                <h6 class="mb-0"><i class="bi bi-list-ul me-2"></i>Order Summary</h6>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Product</th>
+                                <th class="text-center">Quantity</th>
+                                <th class="text-end">Price</th>
+                                <th class="text-end">Total</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in order.order_items.all %}
+                            <tr>
+                                <td>
+                                    <div class="fw-bold">{{ item.product.name }}</div>
+                                    <small class="text-muted">{{ item.product.description|truncatechars:50 }}</small>
+                                </td>
+                                <td class="text-center">
+                                    <span class="badge bg-primary">{{ item.quantity }}</span>
+                                </td>
+                                <td class="text-end">€{{ item.product.price_per_kg|floatformat:2 }}/kg</td>
+                                <td class="text-end fw-bold">€{{ item.total_price|floatformat:2 }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Action Buttons -->
+        <div class="d-grid gap-2 d-md-flex justify-content-md-center mt-4">
+            <a href="{% url 'bulk_order_form' %}" class="btn btn-primary btn-lg">
+                <i class="bi bi-pencil-square me-2"></i>
+                Modify Order
+            </a>
+            <button type="button" class="btn btn-outline-secondary btn-lg" onclick="window.print()">
+                <i class="bi bi-printer me-2"></i>Print Order
+            </button>
+        </div>
+
+        <!-- Information Section -->
+        <div class="row mt-5">
+            <div class="col-md-6">
+                <div class="card border-0 bg-light">
+                    <div class="card-body">
+                        <h6 class="card-title text-primary">
+                            <i class="bi bi-info-circle me-2"></i>What's Next?
+                        </h6>
+                        <ul class="list-unstyled mb-0">
+                            <li class="mb-2"><i class="bi bi-check2 text-success me-2"></i>Order confirmation sent</li>
+                            <li class="mb-2"><i class="bi bi-clock text-warning me-2"></i>Processing within 24 hours</li>
+                            <li class="mb-2"><i class="bi bi-truck text-info me-2"></i>Delivery on {{ order.delivery_date|date:"d/m/Y" }}</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card border-0 bg-light">
+                    <div class="card-body">
+                        <h6 class="card-title text-primary">
+                            <i class="bi bi-question-circle me-2"></i>Need Help?
+                        </h6>
+                        <ul class="list-unstyled mb-0">
+                            <li class="mb-2"><i class="bi bi-telephone text-success me-2"></i>Call: +123 456 7890</li>
+                            <li class="mb-2"><i class="bi bi-envelope text-info me-2"></i>Email: orders@freshconcept.com</li>
+                            <li class="mb-2"><i class="bi bi-clock text-warning me-2"></i>Support: Mon-Fri 8AM-6PM</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Print Styles -->
+<style>
+@media print {
+    .btn, .navbar, .footer { display: none !important; }
+    .card { border: 1px solid #000 !important; box-shadow: none !important; }
+    .bg-success { background-color: #198754 !important; }
+    .text-success { color: #198754 !important; }
+}
+</style>
 {% endblock %}
