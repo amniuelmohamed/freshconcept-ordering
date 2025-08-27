@@ -63,7 +63,7 @@ def bulk_order_form(request):
                 if quantity > 0 and quantity < product.minimum_quantity:
                     errors[product.id] = f"Minimum: {product.minimum_quantity}"
             except (TypeError, ValueError):
-                errors[product.id] = "Enter a valid number"
+                errors[product.id] = "Invalid number"
 
         if errors:
             context = {

@@ -25,6 +25,33 @@
             </div>
         </div>
 
+        <!-- Error Display Section -->
+        {% if errors %}
+        <div class="alert alert-danger alert-dismissible fade show mb-4" role="alert">
+            <div class="d-flex align-items-center">
+                <i class="bi bi-exclamation-triangle-fill me-2 fs-4"></i>
+                <div>
+                    <strong>Please correct the following errors:</strong>
+                    <ul class="mb-0 mt-2">
+                        {% for field, error_message in errors.items %}
+                            {% if field != 'general' %}
+                                {% for product in all_active_products %}
+                                    {% if product.id == field %}
+                                        <li><strong>{{ product.name }}:</strong> {{ error_message }}</li>
+                                    {% endif %}
+                                {% endfor %}
+                            {% else %}
+                                <li>{{ error_message }}</li>
+                            {% endif %}
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+        {% endif %}
+
+
         <!-- Existing Order Notification -->
         {% if existing_order %}
         <div class="alert alert-info alert-dismissible fade show mb-4" role="alert">
@@ -124,7 +151,7 @@
                                     <td class="text-center align-middle">
                                         <div class="input-group input-group-sm">
                                             <input type="number" 
-                                                   class="form-control"
+                                                   class="form-control {% if errors|dict_get:product.id %}is-invalid{% endif %}"
                                                    name="quantity_{{ product.id }}"
                                                    value="{{ quantities|dict_get:product.id|default:0 }}"
                                                    min="0"
@@ -132,6 +159,11 @@
                                                    placeholder="0">
                                             <span class="input-group-text">pieces</span>
                                         </div>
+                                        {% if errors|dict_get:product.id %}
+                                        <div class="invalid-feedback d-block text-center">
+                                            {{ errors|dict_get:product.id }}
+                                        </div>
+                                        {% endif %}
                                     </td>
                                     
                                     <!-- Last 3 Orders History -->

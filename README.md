@@ -37,6 +37,8 @@ This web application addresses the unique needs of **GMS (Grandes et Moyennes Su
 -   Automatic total amount calculation from order items
 -   Order item quantity and pricing management
 -   Staff dashboard for order management (admin interface ready)
+-   **Bulk order form with validation and error display**
+-   **Order modification vs. new order creation logic**
 
 ### Support System
 
@@ -55,10 +57,12 @@ This web application addresses the unique needs of **GMS (Grandes et Moyennes Su
 
 ### Built With
 
--   **Django 5.x** - Web framework
--   **Python 3.x** - Backend language
--   **SQLite** - Development database
+-   **Django 5.2.5** - Web framework
+-   **Python 3.12** - Backend language
+-   **PostgreSQL 16** - Production database (Docker)
+-   **Redis 8** - Caching and sessions (Docker)
 -   **Django Admin** - Staff interface
+-   **Bootstrap 5.3** - Modern responsive UI
 
 ### Key Django Concepts Implemented
 
@@ -72,6 +76,7 @@ This web application addresses the unique needs of **GMS (Grandes et Moyennes Su
 -   **View Logic**: Function-based views with authentication, form handling, and business logic
 -   **URL Routing**: Named URLs, reverse lookups, and role-based redirects
 -   **Testing**: Comprehensive test suite for models, views, and business logic
+-   **Error Handling**: Professional error display with field-specific validation messages
 
 ### Architecture Decisions
 
@@ -80,12 +85,17 @@ This web application addresses the unique needs of **GMS (Grandes et Moyennes Su
 -   Standardized product catalog (consistent packaging and sizes)
 -   Role-based access control (customer, employee, admin)
 -   Integrated support ticket system
+-   **Docker containerization** for consistent development and production environments
 
 ## Project Structure
 
 ```
 freshconcept_ordering/
 ├── manage.py
+├── requirements.txt          # Python dependencies
+├── Dockerfile               # Docker container build
+├── docker-compose.yml       # Multi-container orchestration
+├── .env.example             # Environment variables template
 ├── freshconcept_ordering/
 │   ├── settings.py          # Django settings with custom AUTH_USER_MODEL
 │   ├── urls.py
@@ -97,63 +107,113 @@ freshconcept_ordering/
     ├── migrations/          # Database migrations
     ├── views.py
     ├── urls.py
+    ├── templatetags/        # Custom template filters
     └── templates/
+        ├── orders/          # Order-related templates
+        └── registration/    # Authentication templates
 ```
 
 ## Getting Started
 
-### Prerequisites
+### Option 1: Docker (Recommended)
 
--   Python 3.8+
--   pip
--   Virtual environment
--   Git (for cloning the repository)
+**Prerequisites:**
+- Docker Desktop
+- Git
 
-### Installation
-
+**Quick Start:**
 1. Clone the repository
+```bash
+git clone https://github.com/amniuelmohamed/freshconcept-ordering.git
+cd freshconcept-ordering
+```
 
+2. Copy environment template and configure
+```bash
+cp .env.example .env
+# Edit .env with your database credentials
+```
+
+3. Start the application
+```bash
+docker-compose up --build
+```
+
+4. Access the application
+- **Main App**: http://localhost:8000
+- **Admin Panel**: http://localhost:8000/admin
+
+5. Create superuser
+```bash
+docker-compose exec web python manage.py createsuperuser
+```
+
+### Option 2: Local Development
+
+**Prerequisites:**
+- Python 3.8+
+- pip
+- Virtual environment
+- PostgreSQL (for production-like environment)
+
+**Installation:**
+1. Clone the repository
 ```bash
 git clone https://github.com/amniuelmohamed/freshconcept-ordering.git
 cd freshconcept-ordering
 ```
 
 2. Create and activate virtual environment
-
 ```bash
 python -m venv venv
 source venv/bin/activate  # On Windows: venv\Scripts\activate
 ```
 
 3. Install dependencies
-
 ```bash
-pip install django
+pip install -r requirements.txt
 ```
 
-4. Run migrations
+4. Configure environment variables
+```bash
+cp .env.example .env
+# Edit .env with your database credentials
+```
 
+5. Run migrations
 ```bash
 python manage.py migrate
 ```
 
-5. Create superuser
-
+6. Create superuser
 ```bash
 python manage.py createsuperuser
 ```
 
-6. Run development server
-
+7. Run development server
 ```bash
 python manage.py runserver
 ```
 
-7. Run tests to verify everything works
-
+8. Run tests to verify everything works
 ```bash
 python manage.py test
 ```
+
+## Docker Configuration
+
+### Services
+- **Web**: Django application with Gunicorn
+- **Database**: PostgreSQL 16 with persistent storage
+- **Cache**: Redis 8 for sessions and caching
+
+### Environment Variables
+Copy `.env.example` to `.env` and configure:
+- `DATABASE_URL`: PostgreSQL connection string
+- `POSTGRES_DB`: Database name
+- `POSTGRES_USER`: Database username
+- `POSTGRES_PASSWORD`: Database password
+- `DEBUG`: Development mode (set to 0 for production)
 
 ## Development Roadmap
 
@@ -177,6 +237,8 @@ python manage.py test
 -   [x] Order success page with order summary
 -   [x] Role-based authentication and access control
 -   [x] Comprehensive test suite for models and views
+-   [x] **Professional error display system with field-specific validation**
+-   [x] **Docker containerization with PostgreSQL and Redis**
 
 **Next Steps for Phase 2:**
 - [ ] Employee dashboard for managing products, customers, and orders
@@ -198,6 +260,14 @@ python manage.py test
 -   [ ] Reporting and analytics
 -   [ ] API endpoints
 
+### Phase 5: Production Deployment
+
+-   [ ] Production Docker configuration
+-   [ ] SSL/HTTPS setup
+-   [ ] Database backups and monitoring
+-   [ ] CI/CD pipeline
+-   [ ] Cloud deployment (AWS, Railway, etc.)
+
 ## Learning Objectives
 
 This project serves as a comprehensive Django learning experience covering:
@@ -211,6 +281,8 @@ This project serves as a comprehensive Django learning experience covering:
 -   **URL Routing**: Named URLs, reverse lookups, and role-based redirects
 -   **Testing**: Comprehensive test suite for models, views, and business logic
 -   **Business Logic**: Pricing calculations, delivery schedules, order management, and GMS workflows
+-   **Docker & DevOps**: Containerization, multi-service orchestration, and production deployment
+-   **Error Handling**: Professional user experience with clear validation feedback
 
 ## Contributing
 

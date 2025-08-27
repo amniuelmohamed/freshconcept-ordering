@@ -4,3 +4,20 @@ db.sqlite3
 .env
 venv/
 .DS_Store
+
+# Docker
+.docker/
+docker-compose.override.yml
+
+# Environment files
+.env.local
+.env.production
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+Thumbs.db
