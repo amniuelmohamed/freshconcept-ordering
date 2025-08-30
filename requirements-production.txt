@@ -1,0 +1,17 @@
+# Production requirements for FreshConcept Ordering
+# Core Django
+Django==5.2.5
+
+# Database
+psycopg2-binary==2.9.10
+dj-database-url==3.0.1
+
+# Production server
+gunicorn==23.0.0
+
+# Redis for caching and sessions
+redis==6.4.0
+django-redis==6.0.0
+
+# Security and production tools
+whitenoise==6.9.0
