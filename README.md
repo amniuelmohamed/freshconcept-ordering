@@ -52,6 +52,9 @@ This web application addresses the unique needs of **GMS (Grandes et Moyennes Su
 -   Customer accounts managed by employees/admins
 -   Password reset functionality (framework ready)
 -   Role-based permission system
+-   **Admin panel with role selection** for user creation and management
+-   **Automatic superuser creation** during deployment
+-   **Professional admin interface** with Bootstrap styling
 
 ## Technical Implementation
 
@@ -71,12 +74,14 @@ This web application addresses the unique needs of **GMS (Grandes et Moyennes Su
 -   **Model Properties**: Computed fields for pricing calculations and business logic
 -   **JSONField**: Flexible delivery schedule storage
 -   **Model Validation**: Custom validators for VAT numbers and phone numbers
--   **Admin Customization**: ModelAdmin with custom display methods and fieldsets
+-   **Admin Customization**: ModelAdmin with custom display methods, fieldsets, and role selection
 -   **Template System**: Template inheritance, custom filters, and Bootstrap integration
 -   **View Logic**: Function-based views with authentication, form handling, and business logic
 -   **URL Routing**: Named URLs, reverse lookups, and role-based redirects
 -   **Testing**: Comprehensive test suite for models, views, and business logic
 -   **Error Handling**: Professional error display with field-specific validation messages
+-   **Static File Management**: Whitenoise integration for production static file serving
+-   **User Management**: Custom UserAdmin with role-based user creation and management
 
 ### Architecture Decisions
 
@@ -91,31 +96,42 @@ This web application addresses the unique needs of **GMS (Grandes et Moyennes Su
 
 ```
 freshconcept_ordering/
-├── manage.py
-├── requirements.txt          # Python dependencies
+├── manage.py                # Django management script
+├── requirements.txt          # Development dependencies
+├── requirements-production.txt # Production dependencies
 ├── Dockerfile               # Docker container build
 ├── docker-compose.yml       # Multi-container orchestration
-├── .env.example             # Environment variables template
-├── freshconcept_ordering/
+├── build.sh                 # Render deployment script
+├── .dockerignore            # Docker build exclusions
+├── .gitignore               # Git exclusions
+├── freshconcept_ordering/   # Django project settings
 │   ├── settings.py          # Django settings with custom AUTH_USER_MODEL
-│   ├── urls.py
-│   └── wsgi.py
-└── orders/
-    ├── models.py            # User, Customer, Product, Order, OrderItem models
-    ├── admin.py             # Customized admin interface
-    ├── tests.py             # Comprehensive test suite
-    ├── migrations/          # Database migrations
-    ├── views.py
-    ├── urls.py
-    ├── templatetags/        # Custom template filters
-    └── templates/
-        ├── orders/          # Order-related templates
-        └── registration/    # Authentication templates
+│   ├── urls.py             # Main URL configuration
+│   └── wsgi.py             # WSGI application entry point
+├── orders/                  # Main application
+│   ├── models.py            # User, Customer, Product, Order, OrderItem models
+│   ├── admin.py             # Customized admin interface
+│   ├── tests.py             # Comprehensive test suite
+│   ├── migrations/          # Database migrations
+│   ├── views.py             # View functions and logic
+│   ├── urls.py              # App URL patterns
+│   ├── templatetags/        # Custom template filters
+│   └── templates/           # HTML templates
+│       ├── orders/          # Order-related templates
+│       └── registration/    # Authentication templates
+├── static/                  # Static files (CSS, JS, images)
+├── media/                   # User-uploaded files
+└── staticfiles/             # Collected static files for production
 ```
 
 ## Getting Started
 
-### Option 1: Docker (Recommended)
+### Development vs Production
+
+**Local Development**: Uses Docker containers for consistent environment
+**Production Deployment**: Uses Render's Python 3 environment for optimal performance
+
+### Option 1: Docker (Recommended for Development)
 
 **Prerequisites:**
 - Docker Desktop
@@ -132,6 +148,7 @@ cd freshconcept-ordering
 ```bash
 cp .env.example .env
 # Edit .env with your database credentials
+# Note: .env file is not included in git for security
 ```
 
 3. Start the application
@@ -147,6 +164,64 @@ docker-compose up --build
 ```bash
 docker-compose exec web python manage.py createsuperuser
 ```
+
+## Render Deployment
+
+### Prerequisites
+- Render account (free tier available)
+- GitHub repository connected
+- PostgreSQL database service
+
+### Step-by-Step Deployment
+
+1. **Create PostgreSQL Database**
+   - Go to Render Dashboard → "New +" → "PostgreSQL"
+   - Choose plan and region
+   - **Copy the database credentials** (Internal Database URL)
+   - **Note**: You'll need these for the `DATABASE_URL` environment variable
+
+2. **Create Web Service**
+   - Go to Render Dashboard → "New +" → "Web Service"
+   - Connect your GitHub repository
+   - Choose **"Python 3"** as environment (not Docker)
+   - Set build command: `./build.sh`
+   - Python version: 3.13 (or latest available)
+
+3. **Configure Environment Variables**
+   ```bash
+   DEBUG=False
+   SECRET_KEY=your-production-secret-key
+   ALLOWED_HOSTS=localhost,127.0.0.1
+   DATABASE_URL=postgresql://username:password@host:port/database_name
+   ```
+   
+   **Important**: You must manually set `DATABASE_URL` with the credentials from your PostgreSQL service. Render does NOT set this automatically.
+
+4. **Deploy**
+   - Render will automatically build and deploy
+   - **Build script** (`build.sh`) handles:
+     - Installing production dependencies
+     - Collecting static files
+     - Running database migrations
+     - Creating superuser: `admin` / `admin123`
+   - Static files served with Whitenoise
+   - Database migrations run automatically
+
+### Production Features
+- **Automatic HTTPS** with SSL certificates
+- **Static file serving** via Whitenoise
+- **PostgreSQL database** with automatic backups
+- **Role-based user management** with admin panel
+- **Professional error handling** and validation
+
+### Why Python 3 for Production (Not Docker)?
+- **Faster builds** - No Docker image building required
+- **Simpler deployment** - Render handles Python environment
+- **Better integration** - Optimized for Django applications
+- **Automatic dependency management** - Uses `requirements-production.txt`
+- **Cost effective** - Better resource utilization on Render
+
+**Note**: Docker is used for **local development** only. Production deployment uses Render's Python 3 environment for better performance and integration.
 
 ### Option 2: Local Development
 
@@ -171,7 +246,11 @@ source venv/bin/activate  # On Windows: venv\Scripts\activate
 
 3. Install dependencies
 ```bash
+# For local development (if not using Docker)
 pip install -r requirements.txt
+
+# For production deployment
+pip install -r requirements-production.txt
 ```
 
 4. Configure environment variables
@@ -215,6 +294,20 @@ Copy `.env.example` to `.env` and configure:
 - `POSTGRES_PASSWORD`: Database password
 - `DEBUG`: Development mode (set to 0 for production)
 
+### Docker Development Workflow
+This project uses **Docker for local development** to ensure consistency:
+- **Local development** runs in Docker containers
+- **PostgreSQL + Redis** services for development
+- **Identical environment** for all developers
+- **Easy team onboarding** with consistent setup
+- **No conflicts** with other Python projects
+
+### Build Process
+- **Automatic superuser creation** during deployment
+- **Static file collection** with Whitenoise
+- **Database migrations** with PostgreSQL fallback
+- **Production-ready configuration** out of the box
+
 ## Development Roadmap
 
 ### Phase 1: Core Foundation ✅
@@ -253,20 +346,20 @@ Copy `.env.example` to `.env` and configure:
 -   [ ] Email notifications
 -   [ ] Staff dashboard
 
-### Phase 4: Advanced Features
+### Phase 4: Business Intelligence & Efficiency
 
--   [ ] Saved shopping lists
--   [ ] Bulk ordering tools
--   [ ] Reporting and analytics
--   [ ] API endpoints
+-   [ ] Saved shopping lists for repeat customers
+-   [ ] Business reporting and analytics dashboard
+-   [ ] Customer order patterns and insights
+-   [ ] Inventory management and forecasting
 
-### Phase 5: Production Deployment
+### Phase 5: Production Deployment ✅
 
--   [ ] Production Docker configuration
--   [ ] SSL/HTTPS setup
--   [ ] Database backups and monitoring
--   [ ] CI/CD pipeline
--   [ ] Cloud deployment (AWS, Railway, etc.)
+-   [x] Production Docker configuration
+-   [x] SSL/HTTPS setup (Render automatic)
+-   [x] Database backups and monitoring (Render PostgreSQL)
+-   [x] CI/CD pipeline (GitHub + Render auto-deploy)
+-   [x] Cloud deployment (Render - Free tier available)
 
 ## Learning Objectives
 
