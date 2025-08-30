@@ -50,6 +50,19 @@ class User(AbstractUser):
     @property
     def is_admin(self):
         return self.role == 'admin'
+    
+    def create_superuser(self, username, email, password, **extra_fields):
+        """Override to set admin role for superusers."""
+        extra_fields.setdefault('is_staff', True)
+        extra_fields.setdefault('is_superuser', True)
+        extra_fields.setdefault('role', 'admin')  # Set admin role by default
+        
+        if extra_fields.get('is_staff') is not True:
+            raise ValueError('Superuser must have is_staff=True.')
+        if extra_fields.get('is_superuser') is not True:
+            raise ValueError('Superuser must have is_superuser=True.')
+        
+        return self._create_user(username, email, password, **extra_fields)
 
 
 class Customer(models.Model):
